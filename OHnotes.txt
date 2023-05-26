@@ -1,0 +1,9 @@
+Progress: Implement my own bilateral filtering
+Question: 
+1. the paper, how is the technique applied to make it fast
+2. Run time: bilateral O(r^2), median O(r)
+
+
+Next step: 
+1. Will it help to do filtering multiple times. (not smooth enough for noise or over-smooth stars)
+2. Consider to do pre-processing, for detected stars, either change the params values, or not apply the filter, etc. -> to smooth the noise enough but not make the stars blurred. (YES!)
