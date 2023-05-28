@@ -1,46 +1,64 @@
+'''
+The goal is to do bilateral filtering on the image.
+Type 1: on all pixels
+Type 2: on pixels that are not considered as star pixels
+
+Also increase the contrast by making the background darker
+
+Output images:
+Type 1: 
+    - "I_filtered_{kernel}_{sigma_s * 1000}_{sigma_r * 1000}_{dark_constant * 100}.png"
+    - "I_difference_{kernel}_{sigma_s * 1000}_{sigma_r * 1000}_{dark_constant * 100}.png"
+    - "I_side_by_side_{kernel}_{sigma_s * 1000}_{sigma_r * 1000}_{dark_constant * 100}.png"
+
+Type 2:
+    - "preserve_stars_I_filtered_{kernel}_{sigma_s * 1000}_{sigma_r * 1000}_{dark_constant * 100}.png"
+    - "preserve_stars_I_difference_{kernel}_{sigma_s * 1000}_{sigma_r * 1000}_{dark_constant * 100}.png"
+    - "preserve_stars_I_side_by_side_{kernel}_{sigma_s * 1000}_{sigma_r * 1000}_{dark_constant * 100}.png"
+
+'''
+
+
 import numpy as np
 import cv2
 from skimage import io
-
-class Debug:
-    def __init__(self, debug_println_number = 20, is_debugging = True):
-        self.debug_println_count = 0
-        self.debug_println_number = debug_println_number
-        self.is_debugging = is_debugging
-    
-    def print_start(self, I):
-        if self.is_debugging:
-            print('\n')
-            print('START BILATERAL FILTERING ON IMG, SHAPE ({}, {}, {}) **********'.format(I.shape[0], I.shape[1], I.shape[2]))
-    
-    def print_G_S(self, G_s):
-        if self.is_debugging:
-            print('Constant G_s for this Gaussian kernel is:')
-            print(G_s)
-    
-    def print_progress(self, I):
-        h, w, _ = I.shape
-        self.debug_println_count += 1
-        interval =  (h * w) // self.debug_println_number
-        if self.debug_println_count % interval == 0:
-            print('in progress...  {} trail  {}% complete'.format(self.debug_println_count, self.debug_println_count * 100 // (h * w) ))
+from debug import Debug
 
 
 '''
-main function to export!
-Call this function to run the function of this file.
+main function 1 to export!
 '''
-def run_self_implemented_bilateral_filtering(I, kernel, sigma_s, sigma_r, debugger, output_folder):
-    I_filtered = bilateral_filtering(I, kernel, sigma_s, sigma_r, debugger)
+def run_self_implemented_bilateral_filtering_on_all_non_star_pixels(I, i_coords, j_coords, kernel, sigma_s, sigma_r, dark_constant, debugger, output_folder):
+    star_coords = set()
+    for i in range(len(i_coords)):
+        star_coords.add((i_coords[i], j_coords[i]))
+    I_filtered = bilateral_filtering(I, kernel, sigma_s, sigma_r, star_coords, dark_constant, debugger)
     I_diff = get_difference(I_filtered, I)
 
-    io.imsave('{}/I_filtered.png'.format(output_folder), I_filtered)
-    io.imsave('{}/I_difference.png'.format(output_folder), I_diff)
+    io.imsave(f'{output_folder}/preserve_stars_I_filtered_{kernel}_{int(sigma_s * 1000)}_{int(sigma_r * 1000)}_{int(dark_constant * 100)}.png', I_filtered)
+    io.imsave(f'{output_folder}/preserve_stars_I_difference_{kernel}_{int(sigma_s * 1000)}_{int(sigma_r * 1000)}_{int(dark_constant * 100)}.png', I_diff)
     side_by_side = np.zeros((I_filtered.shape[0], I_filtered.shape[1] * 2 + 10, I_filtered.shape[2]))
     side_by_side[:, :I_filtered.shape[1], :] = I_filtered
     side_by_side[:, I_filtered.shape[1] : I_filtered.shape[1] + 10, 0] = 255
     side_by_side[:, I_filtered.shape[1] + 10:, :] = I 
-    io.imsave('{}/I_side_by_side.png'.format(output_folder), side_by_side)
+    io.imsave(f'{output_folder}/preserve_stars_I_side_by_side_{kernel}_{int(sigma_s * 1000)}_{int(sigma_r * 1000)}_{int(dark_constant * 100)}.png', side_by_side)
+
+
+'''
+main function 2 to export!
+Call this function to run the function of this file.
+'''
+def run_self_implemented_bilateral_filtering_on_all_pixels(I, kernel, sigma_s, sigma_r, dark_constant, debugger, output_folder):
+    I_filtered = bilateral_filtering(I, kernel, sigma_s, sigma_r, None, dark_constant, debugger)
+    I_diff = get_difference(I_filtered, I)
+
+    io.imsave(f'{output_folder}/I_filtered_{kernel}_{int(sigma_s * 1000)}_{int(sigma_r * 1000)}_{int(dark_constant * 100)}.png', I_filtered)
+    io.imsave(f'{output_folder}/I_difference_{kernel}_{int(sigma_s * 1000)}_{int(sigma_r * 1000)}_{int(dark_constant * 100)}.png', I_diff)
+    side_by_side = np.zeros((I_filtered.shape[0], I_filtered.shape[1] * 2 + 10, I_filtered.shape[2]))
+    side_by_side[:, :I_filtered.shape[1], :] = I_filtered
+    side_by_side[:, I_filtered.shape[1] : I_filtered.shape[1] + 10, 0] = 255
+    side_by_side[:, I_filtered.shape[1] + 10:, :] = I 
+    io.imsave(f'{output_folder}/I_side_by_side_{kernel}_{int(sigma_s * 1000)}_{int(sigma_r * 1000)}_{int(dark_constant * 100)}.png', side_by_side)
 
 
 
@@ -54,7 +72,7 @@ def get_difference(I1, I2):
     return Id
 
 
-def bilateral_filtering(I, ksize, sigma_s, sigma_r, debugger = Debug()):
+def bilateral_filtering(I, ksize, sigma_s, sigma_r, star_coords, dark_constant, debugger = Debug()):
     debugger.print_start(I)
 
     YCrCb = cv2.cvtColor(I, cv2.COLOR_RGB2YCrCb)
@@ -72,13 +90,15 @@ def bilateral_filtering(I, ksize, sigma_s, sigma_r, debugger = Debug()):
     l2_norm = np.linalg.norm(points - np.array([0, 0]), axis = 2)
     G_s = g(l2_norm, sigma_s)
 
-    # debugger.print_G_S(G_s)
-
     def compute_filtered_value(p_i, p_j):
         '''
         p_i and p_j are on the padded image
         '''
         debugger.print_progress(I)
+
+        # if it's a star pixel
+        if star_coords is not None and (p_i - half_ksize, p_j - half_ksize) in star_coords:
+            return Y_padded[p_i, p_j]
 
         if p_i < half_ksize or p_i + half_ksize + 1 > Y_padded.shape[0]:
             return 0.001
@@ -100,7 +120,7 @@ def bilateral_filtering(I, ksize, sigma_s, sigma_r, debugger = Debug()):
         normalized_w = w / np.sum(w)
 
         # apply gaussian filter to point p_i, p_j and get updated value for position p
-        return np.sum(normalized_w * Y_padded[q_xv, q_yv])
+        return np.sum(normalized_w * Y_padded[q_xv, q_yv]) / dark_constant
 
 
     vectorized_compute_filtered_value = np.vectorize(compute_filtered_value)

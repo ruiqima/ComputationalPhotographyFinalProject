@@ -1,32 +1,22 @@
+from skimage import io
 import numpy as np
-import math
+import cv2
 
-x = 29
-s = 0.3
-def g(x, s):
-    return np.exp(- (x ** 2) / (2 * (s ** 2))) / (2 * np.pi * (s ** 2))
+I1 = io.imread('outputs/res_small_star/I.jpg')
+# I2 = io.imread('outputs/res_small_star/I_threshold_90.png')
+# I3 = io.imread('outputs/res_small_star/I_threshold_ex_90_75.png')
+# I4 = io.imread('outputs/res_small_star/preserve_stars_I_filtered_15_4000_100_150.png')
 
-def g_math(x, s):
-    return math.exp(- (x ** 2) / (2 * (s ** 2))) / (2 * np.pi * (s ** 2))
-print('g_math {}'.format(g_math(x, s)))
+out_f = 'outputs/res_small_star/smaller'
 
-print('g on 29 {}'.format(g(np.array([x]), s)))
-print(math.exp(- (x ** 2) / (2 * (s ** 2))))
-print((x ** 2) / (2 * (s ** 2)))
-print(2 * math.pi * (s ** 2))
+s_x, e_x = 0, 200
+s_y, e_y = 250, 480
 
+# io.imsave(f'{out_f}/I.png', I1[s_x:e_x, s_y:e_y])
+# io.imsave(f'{out_f}/I_threshold_90.png', I2[s_x:e_x, s_y:e_y])
+# io.imsave(f'{out_f}/I_threshold_ex_90_75.png', I3[s_x:e_x, s_y:e_y])
+# io.imsave(f'{out_f}/preserve_stars_I_filtered_15_4000_100_150.png', I4[s_x:e_x, s_y:e_y])
 
-rb = np.array([[  5 ,5  , 6   ,2 ,252, 252, 252 ,252 ,252 ,252 ,252],
- [  7  , 5 ,  2  , 4 ,252 ,  1  , 1  , 1  , 1 ,  1   ,1]    ,
- [252 ,247 ,251 ,252, 254 ,  1  , 1  , 1 ,  1  , 1  , 1]   , 
- [245 ,240  , 0 ,249,   6  , 4  , 4  , 4  , 4 ,  4  , 4]   , 
- [  6 ,255 ,  4 ,251, 252 ,252 ,252 ,252 ,252 ,252 ,252]  ,  
- [ 28 , 17 ,  5 ,  6 ,247  , 0  , 0 ,  0 ,  0 ,  0 ,  0]    ,
- [ 34  ,25 , 23 , 23,  18  , 7  , 7 ,  7 ,  7 ,  7 , 7]    ,
- [ 35 , 26 , 41 , 22 , 36 , 19 , 19 , 19 , 19 , 19 , 19]    ,
- [ 26 , 31 , 38 , 12 , 29 , 25 , 25 , 25 , 25 , 25 , 25]    ,
- [ 31 , 43 , 35 , 29 , 27 , 29 , 29,  29 , 29 , 29 , 29]    ,
- [ 53 , 63  ,40 , 54 , 28 , 39 , 39,  39 , 39 , 39 , 39]])
-
-print(g(rb, s))
-print(np.sum(g(rb, s)))
+# cv_filtered = np.zeros_like(I1.shape)
+cv_filtered = cv2.bilateralFilter(I1, 15, 80, 80)
+io.imsave(f'{out_f}/cv_filtered.png', cv_filtered[s_x:e_x, s_y:e_y])
